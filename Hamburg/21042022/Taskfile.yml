@@ -1,0 +1,78 @@
+version: "3"
+
+env:
+  CONFIG: '{{.CONFIG | default "."}}'
+
+dotenv: [".env", "aws/.env"]
+
+silent: true
+
+tasks:
+  banner:
+    desc: Banner
+    cmds:
+      - cowsay $CONFIG  | lolcat
+      - echo "✔️  {{.GREETING}} - run 'task -l' for more task list"
+      - echo "💻 {{OS}} - {{ARCH}}"
+
+  tfdoc:
+    desc: ℹ️ Documentation Task for Terraform
+    summary: |
+      A utility to generate documentation from Terraform modules in various output formats
+    cmds:
+      - terraform-docs markdown . --output-file README.md
+    ignore_error: true
+
+  access:
+    desc: AWS Access with aws-vault
+    cmds:
+      - aws-vault exec -d 2h gdn-lab --region=eu-central-1
+
+  trunk:
+    desc: Trunk
+    cmds:
+      - task: banner
+        vars: { { .CONFIG } }
+      - trunk init # ✖ Trunk can only init if it's run at the root of a git repo
+      - trunk check -n $CONFIG
+
+  build:
+    desc: Terraform Build
+    cmds:
+      - task: banner
+        vars: { { .CONFIG } }
+      - terraform -chdir=$CONFIG init
+      - terraform -chdir=$CONFIG fmt
+      - terraform -chdir=$CONFIG validate
+      - terraform -chdir=$CONFIG plan
+
+  deploy:
+    desc: Terraform Deploy
+    cmds:
+      - task: banner
+        vars: { { .CONFIG } }
+      - terraform -chdir=$CONFIG apply -auto-approve
+
+  destroy:
+    desc: Terraform Destroy
+    cmds:
+      - task: banner
+        vars: { { .CONFIG } }
+      - terraform -chdir=$CONFIG apply -auto-approve -destroy
+
+  tfcost:
+    desc: infracost - Generate cost estimates from Terraform
+    cmds:
+      - infracost --tfdir . --show-skipped
+
+  tflint:
+    desc: tflint - A Pluggable Terraform Linter
+    dir: $STACK
+    cmds:
+      - tflint --config=.tflint.hcl --var-file=terraform.tfvars .
+
+  tfsec:
+    desc: tfsec - a simple tool to detect potential security vulnerabilities in your terraformed infrastructure.
+    dir: $STACK
+    cmds:
+      - tfsec . --tfvars-file terraform.tfvars

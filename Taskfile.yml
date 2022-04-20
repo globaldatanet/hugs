@@ -1,0 +1,38 @@
+version: "3"
+
+silent: true
+
+tasks:
+  banner:
+    desc: Banner
+    cmds:
+      - cowsay Brew Apps | lolcat
+
+  brew:
+    desc: Brew Apps
+    cmds:
+      - task: banner
+      - echo 'installing brew packages'
+      - brew update
+      - brew install tfenv tflint terraform-docs pre-commit tfsec coreutils
+      - brew upgrade tfenv tflint terraform-docs pre-commit tfsec coreutils
+      - echo 'installing terraform with tfenv'
+      - tfenv install
+      - tfenv use
+      - echo 'installing infracost'
+      - brew install infracost
+      - infracost register
+
+  extra:
+    desc: Brew Extra Apps
+    cmds:
+      - task: banner
+      - echo 'installing brew extra packages'
+      - brew update
+      - brew checkov trunk
+      - brew checkov trunk
+      - echo 'installing pre-commit hooks'
+      - pre-commit install
+      - echo 'setting pre-commit hooks to auto-install on clone in the future'
+      - git config --global init.templateDir ~/.git-template
+      - pre-commit init-templatedir ~/.git-template
