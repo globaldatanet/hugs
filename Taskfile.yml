@@ -14,7 +14,7 @@ tasks:
       - task: banner
       - echo 'installing brew packages'
       - brew update
-      - brew install tfenv tflint terraform-docs pre-commit tfsec coreutils
+      - brew install tfenv tflint terraform-docs  tfsec coreutils
       - brew upgrade tfenv tflint terraform-docs pre-commit tfsec coreutils
       - echo 'installing terraform with tfenv'
       - tfenv install
@@ -29,8 +29,8 @@ tasks:
       - task: banner
       - echo 'installing brew extra packages'
       - brew update
-      - brew checkov trunk
-      - brew checkov trunk
+      - brew checkov trunk pre-commit
+      - brew checkov trunk pre-commit
       - echo 'installing pre-commit hooks'
       - pre-commit install
       - echo 'setting pre-commit hooks to auto-install on clone in the future'

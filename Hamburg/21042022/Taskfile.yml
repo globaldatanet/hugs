@@ -63,12 +63,13 @@ tasks:
   tfcost:
     desc: infracost - Generate cost estimates from Terraform
     cmds:
-      - infracost --tfdir . --show-skipped
+      - infracost breakdown --usage-file infracost-usage.yml --path . --terraform-plan-flags "-var-file=terraform.tfvars"
 
   tflint:
     desc: tflint - A Pluggable Terraform Linter
     dir: $STACK
     cmds:
+      - tflint --init
       - tflint --config=.tflint.hcl --var-file=terraform.tfvars .
 
   tfsec:
@@ -76,3 +77,11 @@ tasks:
     dir: $STACK
     cmds:
       - tfsec . --tfvars-file terraform.tfvars
+
+  tfdrift:
+    desc: ℹ️ Catch infrastructure drift
+    summary: |
+      driftctl is a free and open-source CLI that warns of infrastructure drift and fills in the missing piece in your DevSecOps toolbox.
+    cmds:
+      - driftctl scan
+    ignore_error: true
