@@ -10,7 +10,7 @@
 
 ## Hamburg HUG Events
 
-- [Terraform Helpers we love at GlobalDataNet](Hamburg/21042022/) - 21-04-2022
+- [Terraform Helpers we love at globaldatanet](Hamburg/21042022/) - 21-04-2022
 
 ---
 
