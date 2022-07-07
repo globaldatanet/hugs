@@ -1,5 +1,8 @@
 resource "aws_s3_bucket" "hugs" {
   bucket_prefix = "hugs"
+  tags = {
+    "cost" = "something"
+  }
 }
 
 # resource "aws_instance" "test" {
