@@ -1,0 +1,332 @@
+# https://taskfile.dev
+
+version: "3"
+
+silent: true
+
+dotenv: [".env", "envs/{{.ENVIRONMENT}}/.env"]
+
+vars:
+  GREETING: Terraform Taskfile!
+  TF_JSON_FILE: plan.json
+  TF_BIN_FILE: plan.bin
+  TF_BACKEND_FILE: envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/backend.tfvars
+  TF_VAR_FILE: envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/terraform.tfvars
+  TF_GLOBAL_FILE: envs/{{.ENVIRONMENT}}/global/terraform.tfvars
+  TF_PATH:
+    sh: pwd
+
+tasks:
+  default:
+    desc: ℹ️ Default Task
+    cmds:
+      - echo "✔️  {{.GREETING}} - run 'task -l' for more task list - {{now | date "2006-01-02"}}"
+      - echo -n "ℹ️  " && terraform --version | grep v
+      - echo -n "ℹ️  " && task --version
+
+  print:
+    cmds:
+      - echo "==========================="
+      - echo "💻 {{OS}} - {{ARCH}}"
+      - echo "ℹ️  STACK  => {{.STACK}}"
+      - echo "ℹ️  ENV    => {{.ENVIRONMENT}}"
+      - echo "ℹ️  REGION => {{.REGION}}"
+      - echo "ℹ️  TASK   => {{.OPS}}"
+      - echo "==========================="
+
+  clean:
+    desc: ℹ️ Clean Task for Terraform
+    cmds:
+      - rm -rf envs/{{.STACK}}/.terraform/
+      - rm -f envs/{{.STACK}}/.terraform.lock.hcl
+      - rm -f envs/{{.STACK}}/{{.TF_BIN_FILE}}
+      - rm -f envs/{{.STACK}}/{{.TF_JSON_FILE}}
+
+  init:
+    desc: ℹ️ Init Task for Terraform
+    cmds:
+      - terraform -chdir=stacks/{{.STACK}} init -backend-config=../../envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/backend.tfvars -no-color >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  TF init Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  validate:
+    desc: ℹ️ Validate Task for Terraform
+    cmds:
+      - terraform -chdir=stacks/{{.STACK}} validate -no-color >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  TF validate Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  fmt:
+    desc: ℹ️ Format Task for Terraform
+    cmds:
+      - terraform -chdir=stacks/{{.STACK}} fmt -no-color >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  TF format Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  plan:
+    desc: ℹ️ Plan Task for Terraform
+    cmds:
+      - AWS_PROFILE={{.ENVIRONMENT}} terraform -chdir=stacks/{{.STACK}} plan -var-file=../../envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/terraform.tfvars -var-file=../../envs/{{.ENVIRONMENT}}/global/terraform.tfvars -out={{.TF_BIN_FILE}} # -no-color >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - terraform -chdir=stacks/{{.STACK}} show --json {{.TF_BIN_FILE}} > stacks/{{.STACK}}/{{.TF_JSON_FILE}}
+      - echo "✔️  TF plan Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  apply:
+    desc: ℹ️ Apply Task for Terraform
+    cmds:
+      - AWS_PROFILE={{.ENVIRONMENT}} terraform -chdir=stacks/{{.STACK}} apply -auto-approve {{.TF_BIN_FILE}} # -no-color >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  Apply Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  destroy:
+    desc: ℹ️ Destroy Task for Terraform
+    cmds:
+      - AWS_PROFILE={{.ENVIRONMENT}} terraform destroy -chdir=stacks/{{.STACK}} -var-file=../../envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/terraform.tfvars -var-file=../../envs/{{.ENVIRONMENT}}/global/terraform.tfvars
+      - echo "✔️  Destroy Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  import:
+    desc: ℹ️ Import Task for Terraform
+    cmds:
+      - AWS_PROFILE={{.ENVIRONMENT}} terraform -chdir=stacks/{{.STACK}} import -var-file=../../envs/{{.ENVIRONMENT}}/{{.REGION}}/{{.STACK}}/terraform.tfvars -var-file=../../envs/{{.ENVIRONMENT}}/global/terraform.tfvars {{.CLI_ARGS}} >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  Import Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  output:
+    desc: ℹ️ Output Task for Terraform
+    cmds:
+      - AWS_PROFILE={{.ENVIRONMENT}} terraform -chdir=stacks/{{.STACK}} output >> logs/{{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}.log
+      - echo "✔️  Output Completed for {{.ENVIRONMENT}}-{{.REGION}}-{{.STACK}}"
+
+  tfdoc:
+    desc: ℹ️ Documentation Task for Terraform
+    cmds:
+      - terraform-docs markdown stacks/{{.STACK}} --output-file README.md
+    ignore_error: true
+
+  mgmt-master-build:
+    cmds:
+      - task: tfdoc
+        vars:
+          STACK: master
+      - task: fmt
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+      - task: init
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+      - task: validate
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+      - task: plan
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+
+  mgmt-master-deploy:
+    cmds:
+      - task: apply
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+
+  mgmt-master-output:
+    cmds:
+      - task: output
+        vars:
+          ENVIRONMENT: mgmt
+          STACK: master
+
+  network-dev-build:
+    cmds:
+      - task: tfdoc
+        vars:
+          STACK: network
+      - task: fmt
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+      - task: init
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+      - task: validate
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+      - task: plan
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+
+  network-dev-deploy:
+    cmds:
+      - task: apply
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+
+  network-dev-output:
+    cmds:
+      - task: output
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: network
+
+  secure-sec-build:
+    cmds:
+      - task: tfdoc
+        vars:
+          STACK: secure
+      - task: fmt
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+      - task: init
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+      - task: validate
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+      - task: plan
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+
+  secure-sec-deploy:
+    cmds:
+      - task: apply
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+
+  secure-sec-output:
+    cmds:
+      - task: output
+        vars:
+          ENVIRONMENT: sec
+          REGION: ca-central-1
+          STACK: secure
+
+  app-dev-build:
+    cmds:
+      - task: tfdoc
+        vars:
+          STACK: app
+      - task: fmt
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+      - task: init
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+      - task: validate
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+      - task: plan
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+
+  app-dev-deploy:
+    cmds:
+      - task: apply
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+
+  app-dev-output:
+    cmds:
+      - task: output
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: app
+
+  data-dev-build:
+    cmds:
+      - task: tfdoc
+        vars:
+          STACK: data
+      - task: fmt
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+      - task: init
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+      - task: validate
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+      - task: plan
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+
+  data-dev-deploy:
+    cmds:
+      - task: apply
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+
+  data-dev-output:
+    cmds:
+      - task: output
+        vars:
+          ENVIRONMENT: dev
+          REGION: ca-central-1
+          STACK: data
+
+  stack:app:
+    desc: ℹ️ Terraform App Stack Cli args
+    dir: "stacks/app"
+    cmds:
+      - terraform {{.CLI_ARGS}}
+
+  stack:data:
+    desc: ℹ️ Terraform Data Stack Cli args
+    dir: "stacks/data"
+    cmds:
+      - terraform {{.CLI_ARGS}}
+
+  stack:master:
+    desc: ℹ️ Terraform Master Stack Cli args
+    dir: "stacks/master"
+    cmds:
+      - terraform {{.CLI_ARGS}}
+
+  stack:network:
+    desc: ℹ️ Terraform Network Stack Cli args
+    dir: "stacks/network"
+    cmds:
+      - terraform {{.CLI_ARGS}}
+
+  stack:sec:
+    desc: ℹ️ Terraform Security Stack Cli args
+    dir: "stacks/secure"
+    cmds:
+      - terraform {{.CLI_ARGS}}

@@ -1,0 +1,45 @@
+include:
+  - project: "GDN/infrastructure/iac-helpers"
+    ref: "main"
+    file: "pipelines/ci-templates/workflow.yml"
+  - project: "GDN/infrastructure/iac-helpers"
+    ref: "main"
+    file: "pipelines/ci-templates/mgmt.yml"
+  - project: "GDN/infrastructure/iac-helpers"
+    ref: "main"
+    file: "pipelines/ci-templates/dev.yml"
+  - project: "GDN/infrastructure/iac-helpers"
+    ref: "main"
+    file: "pipelines/ci-templates/sec.yml"
+
+variables:
+  IMAGE_NAME: "registry.gitlab.com/GDN/infrastructure/iac-helpers:latest"
+  BACKEND_CONFIG: "${CI_PROJECT_DIR}/envs/${ENVIRONMENT}/${REGION}/${STACK}/backend.tfvars"
+  REGION_VAR_FILE: "${CI_PROJECT_DIR}/envs/${ENVIRONMENT}/${REGION}/${STACK}/terraform.tfvars"
+  GLOBAL_VAR_FILE: "${CI_PROJECT_DIR}/envs/${ENVIRONMENT}/global/terraform.tfvars"
+  STACK_PATH: "${CI_PROJECT_DIR}/stacks/${STACK}"
+  TF_STATE_S3_BUCKET: "GDN-${STACK}-terraform-state"
+  TF_STATE_FILE_PATH: "terraform.tfstate"
+  TF_ROOT: ${CI_PROJECT_DIR}
+  PLAN_BIN: plan.bin
+  PLAN_JSON: plan.json
+  TFLINT_CONFIG: config/tflint.hcl
+  INFRACOST_API_KEY: XXXXXXXXXXXXXXXXXXXXXXXXX
+  RULES_CHANGES_PATH: "**/*"
+
+image:
+  name: ${IMAGE_NAME}
+  entrypoint:
+    - "/usr/bin/env"
+    - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+default:
+  after_script:
+    - |
+      echo "==========================="
+      echo "ℹ️  DONE!"
+      echo "==========================="
+
+stages:
+  - build
+  - deploy

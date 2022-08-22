@@ -1,0 +1,89 @@
+.dev:
+  allow_failure: true
+  variables:
+    ENVIRONMENT: dev
+    REGION: ca-central-1
+
+.dev-network:
+  artifacts:
+    name: dev-network
+    expire_in: 7 day
+  variables:
+    STACK: network
+
+.dev-data:
+  artifacts:
+    name: dev-data
+    expire_in: 7 day
+  variables:
+    STACK: data
+
+.dev-app:
+  artifacts:
+    name: dev-app
+    expire_in: 7 day
+  variables:
+    STACK: app
+
+build-dev-network:
+  stage: build
+  extends:
+    - .base-rules
+    - .oidc
+    - .build
+    - .dev
+    - .dev-network
+
+build-dev-data:
+  stage: build
+  extends:
+    - .base-rules
+    - .oidc
+    - .build
+    - .dev
+    - .dev-data
+
+build-dev-app:
+  stage: build
+  extends:
+    - .base-rules
+    - .oidc
+    - .build
+    - .dev
+    - .dev-app
+
+deploy-dev-network:
+  stage: deploy
+  environment: dev-network
+  needs: ["build-dev-network"]
+  when: manual
+  extends:
+    - .base-rules
+    - .oidc
+    - .deploy
+    - .dev
+    - .dev-network
+
+deploy-dev-data:
+  stage: deploy
+  environment: dev-data
+  needs: ["build-dev-data"]
+  when: manual
+  extends:
+    - .base-rules
+    - .oidc
+    - .deploy
+    - .dev
+    - .dev-data
+
+deploy-dev-app:
+  stage: deploy
+  environment: dev-app
+  needs: ["build-dev-app"]
+  when: manual
+  extends:
+    - .base-rules
+    - .oidc
+    - .deploy
+    - .dev
+    - .dev-app

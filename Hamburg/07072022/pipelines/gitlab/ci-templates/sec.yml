@@ -1,0 +1,28 @@
+.sec-secure:
+  allow_failure: true
+  variables:
+    ENVIRONMENT: sec
+    REGION: ca-central-1
+    STACK: secure
+  artifacts:
+    name: sec-secure
+    expire_in: 7 day
+
+build-sec-secure:
+  stage: build
+  extends:
+    - .base-rules
+    - .oidc
+    - .build
+    - .sec-secure
+
+deploy-sec-secure:
+  stage: deploy
+  environment: sec-secure
+  needs: ["build-sec-secure"]
+  when: manual
+  extends:
+    - .base-rules
+    - .oidc
+    - .deploy
+    - .sec-secure

@@ -1,0 +1,28 @@
+.mgmt-master:
+  allow_failure: true
+  variables:
+    ENVIRONMENT: mgmt
+    REGION: ca-central-1
+    STACK: master
+  artifacts:
+    name: mgmt
+    expire_in: 7 day
+
+build-mgmt-master:
+  stage: build
+  extends:
+    - .base-rules
+    - .oidc
+    - .build
+    - .mgmt-master
+
+deploy-mgmt-master:
+  stage: deploy
+  environment: mgmt-master
+  needs: ["build-mgmt-master"]
+  when: manual
+  extends:
+    - .base-rules
+    - .oidc
+    - .deploy
+    - .mgmt-master

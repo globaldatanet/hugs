@@ -1,0 +1,98 @@
+.base-rules:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - $BACKEND_CONFIG
+        - $REGION_VAR_FILE
+        - $GLOBAL_VAR_FILE
+        - $STACK_PATH/**/*
+    - when: manual
+      allow_failure: true
+
+.oidc:
+  before_script:
+    - |
+      echo "==========================="
+      echo "ℹ️  STACK  => $STACK"
+      echo "ℹ️  ENV    => $ENVIRONMENT"
+      echo "==========================="
+    - echo "${CI_JOB_JWT_V2}" > /tmp/web_identity_token
+    - mkdir ~/.aws
+    - echo -e "[profile mgmt]\nrole_arn=${ROLE_ARN}\nweb_identity_token_file=/tmp/web_identity_token" >> ~/.aws/config
+    - aws sts get-caller-identity --profile mgmt
+    - terraform --version
+    - tflint --version
+    - infracost --version
+    - driftctl version
+    - checkov --version
+    - tfsec --version
+
+.build:
+  script:
+    - |
+      echo "==========================="
+      echo "ℹ️  terraform init+fmt+validate"
+      echo "==========================="
+    - terraform -chdir=${STACK_PATH} init -backend=false
+    - terraform -chdir=${STACK_PATH} fmt -recursive -write=false # -diff
+    - terraform -chdir=${STACK_PATH} validate
+    - |
+      echo "==========================="
+      echo "ℹ️  tflint"
+      echo "==========================="
+    - tflint --init --config=${TFLINT_CONFIG} --var-file=${REGION_VAR_FILE} --var-file=${GLOBAL_VAR_FILE} ${STACK_PATH}
+    - tflint --config=${TFLINT_CONFIG} --format=junit --force --var-file=${REGION_VAR_FILE} --var-file=${GLOBAL_VAR_FILE} ${STACK_PATH} > tflint-$ENVIRONMENT-$STACK.xml
+    - tflint --config=${TFLINT_CONFIG} --force --var-file=${REGION_VAR_FILE} --var-file=${GLOBAL_VAR_FILE} ${STACK_PATH}
+    - |
+      echo "==========================="
+      echo "ℹ️  plan"
+      echo "==========================="
+    - alias convert_report="jq -r '([.resource_changes[]?.change.actions?]|flatten)|{\"create\":(map(select(.==\"create\"))|length),\"update\":(map(select(.==\"update\"))|length),\"delete\":(map(select(.==\"delete\"))|length)}'"
+    - shopt -s expand_aliases
+    - terraform -chdir=${STACK_PATH} init -backend-config=${BACKEND_CONFIG}
+    - terraform -chdir=${STACK_PATH} plan -var-file=${REGION_VAR_FILE} -var-file=${GLOBAL_VAR_FILE} -out=$PLAN_BIN
+    - terraform -chdir=${STACK_PATH} show -json $PLAN_BIN > $PLAN_JSON
+    - terraform -chdir=${STACK_PATH} show -json $PLAN_BIN | convert_report > terraform-$ENVIRONMENT-$STACK.json
+    - |
+      echo "==========================="
+      echo "ℹ️  infracost"
+      echo "==========================="
+    - infracost configure set enable_dashboard true
+    - infracost breakdown --path $PLAN_JSON --terraform-plan-flags "-var-file=$REGION_VAR_FILE "-var-file=$GLOBAL_VAR_FILE"" --format json --out-file infracost-$ENVIRONMENT-$STACK.json
+    - infracost output --format html --path infracost-$ENVIRONMENT-$STACK.json --out-file infracost-$ENVIRONMENT-$STACK.html
+    - |
+      echo "==========================="
+      echo "ℹ️  checkov"
+      echo "==========================="
+    - checkov --directory ${STACK_PATH} --output junitxml --soft-fail > checkov-$ENVIRONMENT-$STACK.xml
+  artifacts:
+    reports:
+      junit:
+        - "tflint-$ENVIRONMENT-$STACK.xml"
+        - "checkov-$ENVIRONMENT-$STACK.xml"
+      terraform: terraform-$ENVIRONMENT-$STACK.json
+    paths:
+      - $PLAN_JSON
+      - "terraform-$ENVIRONMENT-$STACK.json"
+      - "tflint-$ENVIRONMENT-$STACK.xml"
+      - "infracost-$ENVIRONMENT-$STACK.html"
+      - "checkov-$ENVIRONMENT-$STACK.xml"
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - ${CI_PROJECT_DIR}/stacks/${STACK}/.terraform
+      - ${CI_PROJECT_DIR}/stacks/${STACK}/$PLAN_BIN
+      - ${CI_PROJECT_DIR}/stacks/${STACK}/$PLAN_JSON
+
+.deploy:
+  script:
+    - |
+      echo "==========================="
+      echo "ℹ️  apply"
+      echo "==========================="
+    - terraform -chdir=${STACK_PATH} init -backend-config=${BACKEND_CONFIG}
+    - terraform -chdir=${STACK_PATH} apply -var-file=${REGION_VAR_FILE} -var-file=${GLOBAL_VAR_FILE} -auto-approve
