@@ -1,0 +1,10 @@
+terraform:
+  required_providers:
+    aws:
+      version: 4.31.0
+backend:
+  organization: globaldatanet
+  workspace: terraform-demo-s3-dev
+s3:
+  region: eu-central-1
+  name: demo-s3-dev-22092022

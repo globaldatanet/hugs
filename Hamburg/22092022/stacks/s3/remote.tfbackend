@@ -1,0 +1,3 @@
+workspaces { name = "terraform-demo-s3-dev" }
+organization = "globaldatanet"
+hostname     = "app.terraform.io"

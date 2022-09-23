@@ -1,0 +1,61 @@
+version: "3"
+
+tasks:
+  touch:
+    cmds:
+      - touch main.tf providers.tf variables.tf outputs.tf terraform.tfvars
+  gh:build:
+    desc: GitHub bootstrap - build
+    env:
+      GITHUB_TOKEN: op://demo/gh/token
+    dir: bootstrap/gh
+    cmds:
+      - op run -- terraform init
+      - op run -- terraform validate
+      - op run -- terraform plan
+  gh:deploy:
+    desc: GitHub bootstrap - deploy
+    env:
+      GITHUB_TOKEN: op://demo/gh/token
+    dir: bootstrap/gh
+    cmds:
+      - op run -- terraform apply -auto-approve
+  gh:destroy:
+    desc: GitHub bootstrap - destroy
+    env:
+      GITHUB_TOKEN: op://demo/gh/token
+    dir: bootstrap/gh
+    cmds:
+      - op run -- terraform destroy -auto-approve
+  git:clone:
+    desc: GitHub Demo repo clone
+    cmds:
+      - git clone $(terraform -chdir=gh output ssh_clone_url)
+  tfc:build:
+    desc: Terraform Cloud bootstrap - build
+    env:
+      TFE_TOKEN: op://demo/tfc/token
+    dir: bootstrap/tfc
+    cmds:
+      - op run -- terraform init
+      - op run -- terraform validate
+      - op run -- terraform plan
+  tfc:deploy:
+    desc: Terraform Cloud bootstrap - deploy
+    env:
+      TFE_TOKEN: op://demo/tfc/token
+    dir: bootstrap/tfc
+    cmds:
+      - op run -- terraform apply -auto-approve
+  tfc:destroy:
+    desc: Terraform Cloud bootstrap - destroy
+    env:
+      TFE_TOKEN: op://demo/tfc/token
+    dir: bootstrap/tfc
+    cmds:
+      - op run -- terraform destroy -auto-approve
+  template:s3:dev:
+    desc: Template Cloud Stack
+    dir: stacks/s3
+    cmds:
+      - gomplate -d config=dev.yaml --input-dir ../../templates/s3

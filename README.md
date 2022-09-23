@@ -24,6 +24,9 @@ Doy you want to become a speaker at this meetup? Then just fill out our Call for
 - [Resource Tagging and Terraform Layouts](Hamburg/07072022/)
   - Date: 07-07-2022
   - [meetup link](https://www.meetup.com/hamburg-hashicorp-user-group/events/286850575/)
+- [Cloud cost estimates for Terraform & Automate Terraform Cloud with Terraform](Hamburg/22092022/)
+  - Date: 22-09-2022
+  - [meetup link](https://www.meetup.com/hamburg-hashicorp-user-group/events/288456943/)
 
 ---
 

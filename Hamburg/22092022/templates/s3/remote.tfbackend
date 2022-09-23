@@ -1,0 +1,3 @@
+workspaces { name = "{{ (datasource "config").backend.workspace }}" }
+organization = "{{ (datasource "config").backend.organization }}"
+hostname     = "app.terraform.io"
